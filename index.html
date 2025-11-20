@@ -3,188 +3,176 @@
 <head>
 <meta charset="UTF-8">
 <title>مدرسة عمر</title>
-
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 <style>
 body {
     font-family: "Cairo", sans-serif;
     background: linear-gradient(135deg, #396afc, #2948ff);
-    margin: 0;
-    padding: 0;
-    color: white;
-    text-align: center;
+    margin:0; padding:0; color:white; text-align:center;
 }
 .container {
-    margin: 40px auto;
-    background: white;
-    color: #333;
-    width: 90%;
-    max-width: 500px;
-    padding: 25px;
-    border-radius: 15px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    margin:40px auto; background:white; color:#333; width:90%; max-width:500px;
+    padding:25px; border-radius:15px; box-shadow:0 4px 15px rgba(0,0,0,0.3);
 }
-input {
-    width: 90%;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid #aaa;
-    margin-bottom: 10px;
-    font-size: 16px;
-}
-button {
-    padding: 10px 20px;
-    border-radius: 8px;
-    border: none;
-    background: #396afc;
-    color: white;
-    font-size: 16px;
-    cursor: pointer;
-    transition: .2s;
-}
-button:hover { background: #2948ff; }
-#studentList div {
-    background: #f4f6ff;
-    padding: 10px;
-    margin: 6px 0;
-    border-radius: 8px;
-    border-right: 5px solid #2948ff;
-    font-weight: bold;
-}
-#adminPanel { display: none; opacity:0; transform:translateY(20px); transition:.4s;}
-#adminPanel.show { display:block; opacity:1; transform:translateY(0);}
+input { width:90%; padding:12px; border-radius:8px; border:1px solid #aaa; margin-bottom:10px; font-size:16px; }
+button { padding:10px 20px; border-radius:8px; border:none; background:#396afc; color:white; font-size:16px; cursor:pointer; transition:.2s; }
+button:hover{ background:#2948ff; }
+#studentList div { background:#f4f6ff; padding:10px; margin:6px 0; border-radius:8px; border-right:5px solid #2948ff; font-weight:bold; }
+#adminPanel { display:none; opacity:0; transform:translateY(20px); transition:.4s; }
+#adminPanel.show{ display:block; opacity:1; transform:translateY(0); }
 .editBox { display:flex; gap:5px; margin-bottom:8px; }
-.editBox input { flex:1; }
+.editBox input{ flex:1; }
 </style>
 </head>
 <body>
 
-<h1>📘 مدرسة عمر</h1>
+<h1 id="secretTitle">📘 مدرسة عمر</h1>
 
 <div class="container">
-    <h2>📝 تسجيل اسم الطالب</h2>
-    <input id="studentName" type="text" placeholder="اكتب اسمك هنا">
-    <button onclick="addStudent()">إضافة الاسم</button>
-    <h3>عدد الطلاب المسجلين: <span id="count">0</span></h3>
-    <h3>📋 قائمة الأسماء</h3>
-    <div id="studentList"></div>
+<h2>📝 تسجيل اسم الطالب</h2>
+<input id="studentName" type="text" placeholder="اكتب اسمك هنا">
+<button onclick="addStudent()">إضافة الاسم</button>
+<h3>عدد الطلاب المسجلين: <span id="count">0</span></h3>
+<h3>📋 قائمة الأسماء</h3>
+<div id="studentList"></div>
 
-    <div id="adminPanel">
-        <hr>
-        <h2>⚙️ لوحة التحكم</h2>
-        <button onclick="exportExcel()">📤 تصدير الأسماء إلى Excel (XLSX)</button>
-        <h3>تحكم بالأسماء:</h3>
-        <div id="adminList"></div>
-        <hr>
-        <h3>🔑 تغيير كلمة المرور</h3>
-        <input id="newPass" type="text" placeholder="اكتب كلمة المرور الجديدة">
-        <button onclick="changePassword()">تغيير كلمة المرور</button>
-    </div>
+<div id="adminPanel">
+<hr>
+<h2>⚙️ لوحة التحكم</h2>
+<button onclick="exportExcel()">📤 تصدير الأسماء إلى Excel (XLSX)</button>
+<h3>تحكم بالأسماء:</h3>
+<div id="adminList"></div>
+<hr>
+<h3>🔑 تغيير كلمة المرور</h3>
+<input id="newPass" type="text" placeholder="كلمة المرور الجديدة">
+<button onclick="changePassword()">حفظ كلمة المرور</button>
+</div>
 </div>
 
 <script>
-// الرابط السري
-const ADMIN_KEY = "K1408k@ksa";
+// ================= Supabase Setup =================
+const SUPABASE_URL = "https://ozwjimsaiqtawaergzkn.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96d2ppbXNhaXF0YXdhZXJnemtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2MjU3MDIsImV4cCI6MjA3OTIwMTcwMn0.auth4TLnHTzOygdMMayIsLAFOy8h9t0ixsOcV9i8Alg";
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// كلمة المرور مخزنة في LocalStorage
-let adminPass = localStorage.getItem("adminPass") || "K1408k@ksa";
+// ================= الوظائف =================
 
-let students = JSON.parse(localStorage.getItem("students")) || [];
+// عرض الطلاب وعدادهم
+async function displayStudents(){
+  const { data, error } = await supabase.from('students').select('*').order('created_at',{ascending:true});
+  if(error) return console.error(error);
 
-// حفظ الطلاب
-function save() { localStorage.setItem("students", JSON.stringify(students)); }
-
-// تحديث العداد
-function updateCount() { document.getElementById("count").textContent = students.length; }
-
-// عرض الطلاب
-function displayStudents() {
-    let list = document.getElementById("studentList");
-    list.innerHTML = "";
-    students.forEach(s => {
-        list.innerHTML += `<div>${s.name}<br><small>⏱ ${s.time}</small></div>`;
-    });
-    updateCount();
-}
-
-// عرض لوحة الأدمن
-function displayAdminList() {
-    let list = document.getElementById("adminList");
-    list.innerHTML = "";
-    students.forEach((s,i)=>{
-        list.innerHTML += `<div class="editBox">
-            <input id="edit_${i}" value="${s.name}">
-            <button onclick="editStudent(${i})">تعديل</button>
-            <button onclick="deleteStudent(${i})" style="background:red">حذف</button>
-        </div>`;
-    });
+  let list = document.getElementById("studentList");
+  list.innerHTML = "";
+  data.forEach(s=>{
+    list.innerHTML += `<div>${s.name}<br><small>${s.created_at}</small></div>`;
+  });
+  document.getElementById("count").textContent = data.length;
 }
 
 // إضافة طالب
-function addStudent(){
-    let name=document.getElementById("studentName").value.trim();
-    if(!name){alert("يرجى كتابة الاسم.");return;}
-    let now=new Date().toLocaleString("ar-SA");
-    students.push({name,time:now});
-    save();
-    displayStudents();
-    document.getElementById("studentName").value="";
+async function addStudent(){
+  let name = document.getElementById("studentName").value.trim();
+  if(!name) return alert("اكتب الاسم");
+
+  const { error } = await supabase.from('students').insert([{name}]);
+  if(error) return alert("خطأ في الإضافة: "+error.message);
+  document.getElementById("studentName").value="";
+  displayStudents();
 }
 
-// تعديل
-function editStudent(i){
-    let newName=document.getElementById("edit_"+i).value.trim();
-    if(!newName){alert("لا يمكن ترك الاسم فارغ"); return;}
-    students[i].name=newName;
-    save();
-    displayStudents();
-    displayAdminList();
+// ================= لوحة الأدمن =================
+
+// عرض لوحة الأدمن
+async function displayAdminList(){
+  const { data, error } = await supabase.from('students').select('*').order('created_at',{ascending:true});
+  if(error) return console.error(error);
+
+  let list = document.getElementById("adminList");
+  list.innerHTML="";
+  data.forEach(s=>{
+    list.innerHTML += `<div class="editBox">
+      <input id="edit_${s.id}" value="${s.name}">
+      <button onclick="editStudent('${s.id}')">تعديل</button>
+      <button onclick="deleteStudent('${s.id}')" style="background:red">حذف</button>
+    </div>`;
+  });
 }
 
-// حذف
-function deleteStudent(i){
-    if(!confirm("هل تريد حذف هذا الاسم؟")) return;
-    students.splice(i,1);
-    save();
-    displayStudents();
-    displayAdminList();
+// تعديل اسم طالب
+async function editStudent(id){
+  let newName = document.getElementById("edit_"+id).value.trim();
+  if(!newName) return alert("الاسم فارغ");
+  const { error } = await supabase.from('students').update({name:newName}).eq('id',id);
+  if(error) return alert(error.message);
+  displayStudents();
+  displayAdminList();
+}
+
+// حذف طالب
+async function deleteStudent(id){
+  if(!confirm("هل تريد حذف هذا الاسم؟")) return;
+  const { error } = await supabase.from('students').delete().eq('id',id);
+  if(error) return alert(error.message);
+  displayStudents();
+  displayAdminList();
 }
 
 // تصدير Excel
-function exportExcel(){
-    let data = students.map((s,index)=>({ "الرقم":index+1, "الاسم":s.name, "وقت التسجيل":s.time }));
-    let ws = XLSX.utils.json_to_sheet(data);
-    let wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "الطلاب");
-    XLSX.writeFile(wb, "اسماء_مدرسة_عمر.xlsx");
+async function exportExcel(){
+  const { data, error } = await supabase.from('students').select('*').order('created_at',{ascending:true});
+  if(error) return alert(error.message);
+  let excelData = data.map((s,i)=>({ "الرقم": i+1, "الاسم": s.name, "وقت التسجيل": s.created_at }));
+  let ws = XLSX.utils.json_to_sheet(excelData);
+  let wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "الطلاب");
+  XLSX.writeFile(wb,"اسماء_مدرسة_عمر.xlsx");
 }
 
-// تغيير كلمة المرور
-function changePassword(){
-    let newP = document.getElementById("newPass").value.trim();
-    if(!newP){ alert("اكتب كلمة المرور الجديدة"); return; }
-    adminPass=newP;
-    localStorage.setItem("adminPass",adminPass);
-    alert("✅ تم تغيير كلمة المرور بنجاح!");
-    document.getElementById("newPass").value="";
+// تغيير كلمة المرور الأدمن
+async function changePassword(){
+  let newP = document.getElementById("newPass").value.trim();
+  if(!newP) return alert("اكتب كلمة المرور الجديدة");
+
+  const { data, error } = await supabase.from('admin').select('*').limit(1);
+  if(error) return alert(error.message);
+
+  const id = data[0].id;
+  const { error: updateErr } = await supabase.from('admin').update({password:newP}).eq('id',id);
+  if(updateErr) return alert(updateErr.message);
+
+  alert("✅ تم تغيير كلمة المرور بنجاح");
+  document.getElementById("newPass").value="";
 }
 
-// تحقق الرابط السري وادخل كلمة المرور
-let urlParams = new URLSearchParams(window.location.search);
-if(urlParams.get("adminKey")===ADMIN_KEY){
-    let pass=prompt("🔐 أدخل كلمة المرور الحالية للأدمن:");
-    if(pass===adminPass){
-        let panel=document.getElementById("adminPanel");
-        panel.classList.add("show");
-        displayAdminList();
-    } else { alert("❌ كلمة المرور خاطئة!"); }
+// تسجيل دخول الأدمن
+async function adminLogin(){
+  let pass = prompt("🔐 أدخل كلمة المرور:");
+  const { data, error } = await supabase.from('admin').select('*').limit(1);
+  if(error) return alert(error.message);
+
+  if(data[0].password === pass){
+    document.getElementById("adminPanel").classList.add("show");
+    displayAdminList();
+  }else{
+    alert("❌ كلمة المرور خاطئة!");
+  }
 }
 
-// تشغيل أولي
+// ================= طريقة سرية للدخول =================
+let clicks=0;
+document.getElementById("secretTitle").onclick=function(){
+  clicks++;
+  if(clicks>=5){
+    adminLogin();
+    clicks=0;
+  }
+}
+
+// ================= تشغيل أولي =================
 displayStudents();
 
 </script>
-
 </body>
 </html>
