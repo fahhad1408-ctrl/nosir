@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>مدرسة عمر</title>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+body {
+    font-family: "Cairo", sans-serif;
+    background: linear-gradient(135deg, #396afc, #2948ff);
+    margin: 0;
+    padding: 0;
+    color: white;
+    text-align: center;
+}
+.container {
+    margin: 40px auto;
+    background: white;
+    color: #333;
+    width: 90%;
+    max-width: 500px;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+input {
+    width: 90%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #aaa;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+button {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    background: #396afc;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: .2s;
+}
+button:hover { background: #2948ff; }
+#studentList div {
+    background: #f4f6ff;
+    padding: 10px;
+    margin: 6px 0;
+    border-radius: 8px;
+    border-right: 5px solid #2948ff;
+    font-weight: bold;
+}
+#adminPanel { display: none; opacity:0; transform:translateY(20px); transition:.4s;}
+#adminPanel.show { display:block; opacity:1; transform:translateY(0);}
+.editBox { display:flex; gap:5px; margin-bottom:8px; }
+.editBox input { flex:1; }
+</style>
+</head>
+<body>
+
+<h1>📘 مدرسة عمر</h1>
+
+<div class="container">
+    <h2>📝 تسجيل اسم الطالب</h2>
+    <input id="studentName" type="text" placeholder="اكتب اسمك هنا">
+    <button onclick="addStudent()">إضافة الاسم</button>
+    <h3>عدد الطلاب المسجلين: <span id="count">0</span></h3>
+    <h3>📋 قائمة الأسماء</h3>
+    <div id="studentList"></div>
+
+    <div id="adminPanel">
+        <hr>
+        <h2>⚙️ لوحة التحكم</h2>
+        <button onclick="exportExcel()">📤 تصدير الأسماء إلى Excel (XLSX)</button>
+        <h3>تحكم بالأسماء:</h3>
+        <div id="adminList"></div>
+        <hr>
+        <h3>🔑 تغيير كلمة المرور</h3>
+        <input id="newPass" type="text" placeholder="اكتب كلمة المرور الجديدة">
+        <button onclick="changePassword()">تغيير كلمة المرور</button>
+    </div>
+</div>
+
+<script>
+// الرابط السري
+const ADMIN_KEY = "K1408k@ksa";
+
+// كلمة المرور مخزنة في LocalStorage
+let adminPass = localStorage.getItem("adminPass") || "K1408k@ksa";
+
+let students = JSON.parse(localStorage.getItem("students")) || [];
+
+// حفظ الطلاب
+function save() { localStorage.setItem("students", JSON.stringify(students)); }
+
+// تحديث العداد
+function updateCount() { document.getElementById("count").textContent = students.length; }
+
+// عرض الطلاب
+function displayStudents() {
+    let list = document.getElementById("studentList");
+    list.innerHTML = "";
+    students.forEach(s => {
+        list.innerHTML += `<div>${s.name}<br><small>⏱ ${s.time}</small></div>`;
+    });
+    updateCount();
+}
+
+// عرض لوحة الأدمن
+function displayAdminList() {
+    let list = document.getElementById("adminList");
+    list.innerHTML = "";
+    students.forEach((s,i)=>{
+        list.innerHTML += `<div class="editBox">
+            <input id="edit_${i}" value="${s.name}">
+            <button onclick="editStudent(${i})">تعديل</button>
+            <button onclick="deleteStudent(${i})" style="background:red">حذف</button>
+        </div>`;
+    });
+}
+
+// إضافة طالب
+function addStudent(){
+    let name=document.getElementById("studentName").value.trim();
+    if(!name){alert("يرجى كتابة الاسم.");return;}
+    let now=new Date().toLocaleString("ar-SA");
+    students.push({name,time:now});
+    save();
+    displayStudents();
+    document.getElementById("studentName").value="";
+}
+
+// تعديل
+function editStudent(i){
+    let newName=document.getElementById("edit_"+i).value.trim();
+    if(!newName){alert("لا يمكن ترك الاسم فارغ"); return;}
+    students[i].name=newName;
+    save();
+    displayStudents();
+    displayAdminList();
+}
+
+// حذف
+function deleteStudent(i){
+    if(!confirm("هل تريد حذف هذا الاسم؟")) return;
+    students.splice(i,1);
+    save();
+    displayStudents();
+    displayAdminList();
+}
+
+// تصدير Excel
+function exportExcel(){
+    let data = students.map((s,index)=>({ "الرقم":index+1, "الاسم":s.name, "وقت التسجيل":s.time }));
+    let ws = XLSX.utils.json_to_sheet(data);
+    let wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "الطلاب");
+    XLSX.writeFile(wb, "اسماء_مدرسة_عمر.xlsx");
+}
+
+// تغيير كلمة المرور
+function changePassword(){
+    let newP = document.getElementById("newPass").value.trim();
+    if(!newP){ alert("اكتب كلمة المرور الجديدة"); return; }
+    adminPass=newP;
+    localStorage.setItem("adminPass",adminPass);
+    alert("✅ تم تغيير كلمة المرور بنجاح!");
+    document.getElementById("newPass").value="";
+}
+
+// تحقق الرابط السري وادخل كلمة المرور
+let urlParams = new URLSearchParams(window.location.search);
+if(urlParams.get("adminKey")===ADMIN_KEY){
+    let pass=prompt("🔐 أدخل كلمة المرور الحالية للأدمن:");
+    if(pass===adminPass){
+        let panel=document.getElementById("adminPanel");
+        panel.classList.add("show");
+        displayAdminList();
+    } else { alert("❌ كلمة المرور خاطئة!"); }
+}
+
+// تشغيل أولي
+displayStudents();
+
+</script>
+
+</body>
+</html>
